@@ -1,116 +1,102 @@
 from matplotlib import pyplot as plt
 import yfinance as yf
-import pandas as pd
 import numpy as np
 
-# input tickers to analyze and yfinance formatted time period (10y 2mo etc)
-ticker1 = "MSFT"
-ticker2 = "AAPL"
-time_period = '20mo'
 
-# get data for tickerts
-get_data1= yf.Ticker(ticker1)
-get_data2 = yf.Ticker(ticker2)
-ticker1_data = get_data1.history(period=time_period)
-ticker2_data = get_data2.history(period=time_period)
-# data will be closing prices for this model
-close_prices1 = ticker1_data.iloc[:,3].to_numpy()
-close_prices2 = ticker2_data.iloc[:,3].to_numpy()
-# create an index to regress onto and plot and then create a prediction index to model future behavior 100 days into the future
-index = np.linspace(0,len(close_prices1),len(close_prices1))
-pred_index = np.linspace(0,len(close_prices1)+100,len(close_prices1)+100)
+# Get data for tickers
+def get_data(ticker,time_period,days_future):
+    data = yf.Ticker(ticker)
+    time_data = data.history(period=time_period)
+    # data will be closing prices for this model
+    close_prices = time_data.iloc[:,3].to_numpy()
+    # create an index to regress onto and plot and then create a prediction index to model future behavior 100 days into the future
+    index = np.linspace(0,len(close_prices),len(close_prices))
+    pred_index = np.linspace(0,len(close_prices)+int(days_future),len(close_prices)+int(days_future))
+    return close_prices,index,pred_index
 
-# # get recent prices
-# tick1_text = ticker1 + " is at " + str(close_prices1[-1]) + " most recently"
-# tick2_text = ticker2 + " is at " + str(close_prices2[-1]) + " most recently"
-# print(tick1_text)
-# print(tick2_text)
+# Get current prices
+def get_current_price(ticker):
+    data = yf.Ticker(ticker)
+    time_data = data.history(period="10d")
+    close_prices = time_data.iloc[:,3].to_numpy()
+    tick_text = ticker + " is at $" + str(close_prices[-1]) + " per share most recently"
+    print(tick_text)
 
-# # market cap
-# ticker1_marketCap = get_data1.info['marketCap']
-# ticker2_marketCap = get_data2.info['marketCap']
-# print(ticker1 + ' Market Cap: '+ str(ticker1_marketCap))
-# print(ticker2 + ' Market Cap: '+ str(ticker2_marketCap))
+# market cap
+def get_mkt_cap(ticker):
+    data = yf.Ticker(ticker)
+    ticker_marketCap = data.info['marketCap']
+    print(ticker + ' Market Cap: $'+ str(ticker_marketCap) + " most recently")
 
-# plot share price
-plt.figure(figsize=[14,6])
-plt.plot(index,close_prices1)
-plt.plot(index,close_prices2)
-plt.xticks(size=4,rotation=45)
-
-# Linear Model for 1
-xhat1 = np.average(index)
-yhat1 = np.average(close_prices1)
-beta11 = np.sum((close_prices1-yhat1)*(index-xhat1))/np.sum((index-xhat1)**2)
-beta01 = yhat1 - beta11*xhat1
-pred1 = beta11*pred_index + beta01
-# print(beta11)
-# print(beta01)
-plt.plot(pred_index,pred1,'--')
-
-#linear model for 2
-xhat2 = np.average(index)
-yhat2 = np.average(close_prices2)
-beta12 = np.sum((close_prices2-yhat2)*(index-xhat2))/np.sum((index-xhat2)**2)
-beta02 = yhat2 - beta12*xhat2
-pred2 = beta12*pred_index + beta02
-# print(beta12)
-# print(beta02)
-plt.plot(pred_index,pred2,'--')
+# Linear Model
+def get_simple_linreg(X,Y,X_prediction):
+    x = X
+    y = Y
+    xhat = np.average(x)
+    yhat = np.average(y)
+    beta1 = np.sum((y-yhat)*(x-xhat))/np.sum((x-xhat)**2)
+    beta0 = yhat - beta1*xhat
+    Y_prediction = beta1*X_prediction + beta0
+    return Y_prediction
 
 # quadtratic model for 1
-sum_matrix1 = np.array([np.sum(index**4), np.sum(index**3), np.sum(index**2), np.sum(index**3), np.sum(index**2), np.sum(index), np.sum(index**2), np.sum(index), len(index)])
-sum_matrix1 = np.reshape(sum_matrix1,[3,3])
-# print(sum_matrix)
-sum_solutions1 = (np.array([np.sum(np.multiply(index**2,close_prices1)),np.sum(np.multiply(index,close_prices1)),np.sum(close_prices1)]))
-sum_solutions1 = np.reshape(sum_solutions1,[3,1])
-# print(sum_solutions1)
-betas1 = np.dot(np.linalg.inv(sum_matrix1),sum_solutions1)
-# print(betas1)
-quad_prediction1 = betas1[2] + betas1[1]*pred_index + betas1[0]*(pred_index**2)
-plt.plot(pred_index,quad_prediction1,'o',markersize=1)
+def get_quad_linreg(X,Y,X_prediction):
+    sum_matrix = np.array([np.sum(X**4), np.sum(X**3), np.sum(X**2), np.sum(X**3), np.sum(X**2), np.sum(X), np.sum(X**2), np.sum(X), len(X)])
+    sum_matrix = np.reshape(sum_matrix,[3,3])
+    # print(sum_matrix)
+    sum_solutions = (np.array([np.sum(np.multiply(X**2,Y)),np.sum(np.multiply(X,Y)),np.sum(Y)]))
+    sum_solutions = np.reshape(sum_solutions,[3,1])
+    betas = np.dot(np.linalg.inv(sum_matrix),sum_solutions)
+    quad_mdl = betas[2] + betas[1]*X_prediction + betas[0]*(X_prediction**2)
+    return quad_mdl
 
-# quadratic model for 2
-sum_matrix2 = np.array([np.sum(index**4), np.sum(index**3), np.sum(index**2), np.sum(index**3), np.sum(index**2), np.sum(index), np.sum(index**2), np.sum(index), len(index)])
-sum_matrix2 = np.reshape(sum_matrix2,[3,3])
-# print(sum_matrix2)
-sum_solutions2 = (np.array([np.sum(np.multiply(index**2,close_prices2)),np.sum(np.multiply(index,close_prices2)),np.sum(close_prices2)]))
-sum_solutions2 = np.reshape(sum_solutions2,[3,1])
-# print(sum_solutions2)
-betas2 = np.dot(np.linalg.inv(sum_matrix2),sum_solutions2)
-# print(betas2) 
-quad_prediction2 = betas2[2] + betas2[1]*pred_index + betas2[0]*(pred_index**2)
-plt.plot(pred_index,quad_prediction2,'o',markersize=1)
+# # exponential model for 1
+def get_exp_linreg(X,Y,X_prediction):
+    log_prices = np.log(Y[1:len(Y)])
+    log_index = X[1:len(X)]
+    x_loghat1 = np.average(log_index)
+    y_loghat1 = np.average(log_prices)
+    log_beta1 = np.sum((log_prices-y_loghat1)*(log_index-x_loghat1))/np.sum((log_index-x_loghat1)**2)
+    log_beta0 = y_loghat1 - log_beta1*x_loghat1
+    log_pred = np.exp(log_beta1*(X_prediction[1:len(X_prediction)]) + log_beta0)
+    return log_pred
 
-# exponential model for 1
-log_prices1 = np.log(close_prices1[1:len(close_prices1)])
-log_index1 = index[1:len(index)]
-# plt.plot(log_index1,log_prices1)
-# print(log_prices1)
-x_loghat1 = np.average(log_index1)
-y_loghat1 = np.average(log_prices1)
-log_beta11 = np.sum((log_prices1-y_loghat1)*(log_index1-x_loghat1))/np.sum((log_index1-x_loghat1)**2)
-log_beta01 = y_loghat1 - log_beta11*x_loghat1
-# print(log_beta01,log_beta11)
-log_pred1 = np.exp(log_beta11*(pred_index[1:len(pred_index)]) + log_beta01)
-plt.plot(pred_index[1:len(pred_index)],log_pred1,'s',markersize=1)
+# # Specify tickers and parameters to analyze
+ticker1 = "AAPL"
+ticker2 = "MSFT"
+time_period1 = "3y"
+time_period2 = "3y"
+future_days1 = "100"
+future_days2 = "100"
 
-# exponential model for 2
-log_prices2 = np.log(close_prices2[1:len(close_prices2)])
-log_index2 = index[1:len(index)]
-# plt.plot(log_index2,log_prices2)
-# print(log_prices2)
-x_loghat2 = np.average(log_index2)
-y_loghat2 = np.average(log_prices2)
-log_beta12 = np.sum((log_prices2-y_loghat2)*(log_index2-x_loghat2))/np.sum((log_index2-x_loghat2)**2)
-log_beta02 = y_loghat2 - log_beta12*x_loghat2
-# print(log_beta02,log_beta12)
-log_pred2 = np.exp(log_beta12*(pred_index[1:len(pred_index)]) + log_beta02)
-plt.plot(pred_index[1:len(pred_index)],log_pred2,'s',markersize=1)
+# # Get the data for the tickers defined
+# get_current_price(ticker1)
+# get_current_price(ticker2)
+# get_mkt_cap(ticker1)
+# get_mkt_cap(ticker2)
+close_prices1,index1,pred_index1 = get_data(ticker1,time_period1,future_days1)
+close_prices2,index2,pred_index2 = get_data(ticker2,time_period2,future_days2)
 
-# format plot
+# # Make the models (simple linear regression, quadratic linear regression, exponential linear regression)
+lin_model1 = get_simple_linreg(index1,close_prices1,pred_index1)
+lin_model2 = get_simple_linreg(index2,close_prices2,pred_index2)
+quad_mdl1 = get_quad_linreg(index1,close_prices1,pred_index1)
+quad_mdl2 = get_quad_linreg(index2,close_prices2,pred_index2)
+exp_mdl1 = get_exp_linreg(index1,close_prices1,pred_index1)
+exp_mdl2 = get_exp_linreg(index2,close_prices2,pred_index2)
+
+# # Make the plots to compare
+plt.figure(figsize=[14,6])
+plt.plot(index1,close_prices1,zorder=7)
+plt.plot(index2,close_prices2,zorder=8)
+plt.plot(pred_index1,lin_model1,"--")
+plt.plot(pred_index2,lin_model2,"--")
+plt.plot(pred_index1,quad_mdl1,"--")
+plt.plot(pred_index2,quad_mdl2,"--")
+plt.plot(pred_index1[1:len(pred_index1)],exp_mdl1,"--")
+plt.plot(pred_index2[1:len(pred_index2)],exp_mdl2,"--")
 plt.title(ticker1 + " and " + ticker2 + " Analysis")
 plt.ylabel("share price")
-plt.xlabel("previous " + time_period)
+plt.xlabel("previous " + time_period1 + "("+ticker1+")" + " or "+ time_period2+ "("+ticker2+")")
 plt.legend([ticker1,ticker2,ticker1+" linear model",ticker2+" linear model",ticker1+" quadratic model",ticker2+" quadratic model",ticker1+" exponential model",ticker2+" exponential model"])
 plt.show()
