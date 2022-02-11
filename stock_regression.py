@@ -36,8 +36,8 @@ def get_simple_linreg(X,Y,X_prediction):
     yhat = np.average(y)
     beta1 = np.sum((y-yhat)*(x-xhat))/np.sum((x-xhat)**2)
     beta0 = yhat - beta1*xhat
-    Y_prediction = beta1*X_prediction + beta0
-    return Y_prediction
+    lin_mdl = beta1*X_prediction + beta0
+    return lin_mdl
 
 # quadtratic model for 1
 def get_quad_linreg(X,Y,X_prediction):
@@ -58,16 +58,16 @@ def get_exp_linreg(X,Y,X_prediction):
     y_loghat1 = np.average(log_prices)
     log_beta1 = np.sum((log_prices-y_loghat1)*(log_index-x_loghat1))/np.sum((log_index-x_loghat1)**2)
     log_beta0 = y_loghat1 - log_beta1*x_loghat1
-    log_pred = np.exp(log_beta1*(X_prediction[1:len(X_prediction)]) + log_beta0)
-    return log_pred
+    exp_mdl = np.exp(log_beta1*(X_prediction[1:len(X_prediction)]) + log_beta0)
+    return exp_mdl
 
 # # Specify tickers and parameters to analyze
-ticker1 = "AAPL"
-ticker2 = "MSFT"
-time_period1 = "3y"
-time_period2 = "3y"
-future_days1 = "100"
-future_days2 = "100"
+ticker1 = "spy"
+ticker2 = "aapl"
+time_period1 = "20y"
+time_period2 = "20y"
+future_days1 = "1000"
+future_days2 = "1000"
 
 # # Get the data for the tickers defined
 # get_current_price(ticker1)
@@ -89,12 +89,12 @@ exp_mdl2 = get_exp_linreg(index2,close_prices2,pred_index2)
 plt.figure(figsize=[14,6])
 plt.plot(index1,close_prices1,zorder=7)
 plt.plot(index2,close_prices2,zorder=8)
-plt.plot(pred_index1,lin_model1,"--")
-plt.plot(pred_index2,lin_model2,"--")
-plt.plot(pred_index1,quad_mdl1,"--")
-plt.plot(pred_index2,quad_mdl2,"--")
-plt.plot(pred_index1[1:len(pred_index1)],exp_mdl1,"--")
-plt.plot(pred_index2[1:len(pred_index2)],exp_mdl2,"--")
+plt.plot(pred_index1,lin_model1,"--",linewidth=.75)
+plt.plot(pred_index2,lin_model2,"--",linewidth=.75)
+plt.plot(pred_index1,quad_mdl1,"--",linewidth=.75)
+plt.plot(pred_index2,quad_mdl2,"--",linewidth=.75)
+plt.plot(pred_index1[1:len(pred_index1)],exp_mdl1,"--",linewidth=.75)
+plt.plot(pred_index2[1:len(pred_index2)],exp_mdl2,"--",linewidth=.75)
 plt.title(ticker1 + " and " + ticker2 + " Analysis")
 plt.ylabel("share price")
 plt.xlabel("previous " + time_period1 + "("+ticker1+")" + " or "+ time_period2+ "("+ticker2+")")
