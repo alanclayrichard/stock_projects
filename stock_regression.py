@@ -28,27 +28,26 @@ def get_mkt_cap(ticker):
     ticker_marketCap = data.info['marketCap']
     print(ticker + ' Market Cap: $'+ str(ticker_marketCap) + " most recently")
 
-# Linear Model
-def get_simple_linreg(X,Y,X_prediction):
-    x = X
-    y = Y
-    xhat = np.average(x)
-    yhat = np.average(y)
-    beta1 = np.sum((y-yhat)*(x-xhat))/np.sum((x-xhat)**2)
-    beta0 = yhat - beta1*xhat
-    lin_mdl = beta1*X_prediction + beta0
-    return lin_mdl
 
-# quadtratic model for 1
-def get_quad_linreg(X,Y,X_prediction):
-    sum_matrix = np.array([np.sum(X**4), np.sum(X**3), np.sum(X**2), np.sum(X**3), np.sum(X**2), np.sum(X), np.sum(X**2), np.sum(X), len(X)])
-    sum_matrix = np.reshape(sum_matrix,[3,3])
-    # print(sum_matrix)
-    sum_solutions = (np.array([np.sum(np.multiply(X**2,Y)),np.sum(np.multiply(X,Y)),np.sum(Y)]))
-    sum_solutions = np.reshape(sum_solutions,[3,1])
-    betas = np.dot(np.linalg.inv(sum_matrix),sum_solutions)
-    quad_mdl = betas[2] + betas[1]*X_prediction + betas[0]*(X_prediction**2)
-    return quad_mdl
+def get_poly_linreg(X,Y,order,X_prediction):
+    y = np.reshape(Y,[len(Y),1])
+    x = np.reshape(X,[len(X),1])
+    if order == 1:
+        x_ones = np.ones([len(X),1])
+        x = np.hstack((x_ones,x))
+    else: 
+        x_ones = np.ones([len(X),1])
+        for i in range(1,order+1):
+            x_ones = np.hstack((x_ones,x**i))
+        x = x_ones
+    Betas = np.dot(np.linalg.inv(np.dot(x.transpose(1,0),x)),np.dot(x.transpose(1,0),y))
+    if order == 1:
+        poly_linreg_mdl = Betas[0] + Betas[1]*X_prediction
+    else:
+        poly_linreg_mdl = Betas[0]
+        for j in range(1,order+1):
+            poly_linreg_mdl = poly_linreg_mdl + Betas[j]*(X_prediction**j)
+    return poly_linreg_mdl
 
 # # exponential model for 1
 def get_exp_linreg(X,Y,X_prediction):
@@ -62,12 +61,12 @@ def get_exp_linreg(X,Y,X_prediction):
     return exp_mdl
 
 # # Specify tickers and parameters to analyze
-ticker1 = "spy"
-ticker2 = "aapl"
-time_period1 = "20y"
-time_period2 = "20y"
-future_days1 = "1000"
-future_days2 = "1000"
+ticker1 = "AAPL"
+ticker2 = "SPY"
+time_period1 = "2y"
+time_period2 = "2y"
+future_days1 = "50"
+future_days2 = "50"
 
 # # Get the data for the tickers defined
 # get_current_price(ticker1)
@@ -77,20 +76,22 @@ future_days2 = "1000"
 close_prices1,index1,pred_index1 = get_data(ticker1,time_period1,future_days1)
 close_prices2,index2,pred_index2 = get_data(ticker2,time_period2,future_days2)
 
+poly_linreg_mdl = get_poly_linreg(index1,close_prices1,2,pred_index1)
+
 # # Make the models (simple linear regression, quadratic linear regression, exponential linear regression)
-lin_model1 = get_simple_linreg(index1,close_prices1,pred_index1)
-lin_model2 = get_simple_linreg(index2,close_prices2,pred_index2)
-quad_mdl1 = get_quad_linreg(index1,close_prices1,pred_index1)
-quad_mdl2 = get_quad_linreg(index2,close_prices2,pred_index2)
+lin_mdl1 = get_poly_linreg(index1,close_prices1,1,pred_index1)
+lin_mdl2 = get_poly_linreg(index2,close_prices2,1,pred_index2)
+quad_mdl1 = get_poly_linreg(index1,close_prices1,2,pred_index1)
+quad_mdl2 = get_poly_linreg(index2,close_prices2,2,pred_index2)
 exp_mdl1 = get_exp_linreg(index1,close_prices1,pred_index1)
 exp_mdl2 = get_exp_linreg(index2,close_prices2,pred_index2)
 
-# # Make the plots to compare
+# # # Make the plots to compare
 plt.figure(figsize=[14,6])
 plt.plot(index1,close_prices1,zorder=7)
 plt.plot(index2,close_prices2,zorder=8)
-plt.plot(pred_index1,lin_model1,"--",linewidth=.75)
-plt.plot(pred_index2,lin_model2,"--",linewidth=.75)
+plt.plot(pred_index1,lin_mdl1,"--",linewidth=.75)
+plt.plot(pred_index2,lin_mdl2,"--",linewidth=.75)
 plt.plot(pred_index1,quad_mdl1,"--",linewidth=.75)
 plt.plot(pred_index2,quad_mdl2,"--",linewidth=.75)
 plt.plot(pred_index1[1:len(pred_index1)],exp_mdl1,"--",linewidth=.75)
