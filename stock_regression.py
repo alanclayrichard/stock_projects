@@ -1,3 +1,4 @@
+from cmath import exp
 from matplotlib import pyplot as plt
 import yfinance as yf
 import numpy as np
@@ -60,57 +61,46 @@ def get_exp_linreg(X,Y,X_prediction):
     exp_mdl = np.exp(log_beta1*(X_prediction[1:len(X_prediction)]) + log_beta0)
     return exp_mdl
 
-# Plot Multiple Polynomial Models
-def plot_mult_polyfit(max_order):
-    models = np.zeros([len(close_prices1)+int(future_days1),1])
-    for i in range(1,max_order+1):
-        poly = get_poly_linreg(index1,close_prices1,i,pred_index1)
-        poly = np.reshape(poly,[len(poly),1])
-        models = (models+poly)
-        average_models = models/i
-        plt.plot(pred_index1,average_models,'--',linewidth=.25)
+def compare_two_plot(ticker1,ticker2,time_period,future_days,order=1):
+    close_prices1,index1,pred_index1 = get_data(ticker1,time_period,future_days)
+    close_prices2,index2,pred_index2 = get_data(ticker2,time_period,future_days)
+    mdl1 = get_poly_linreg(index1,close_prices1,order,pred_index1)
+    mdl2 = get_poly_linreg(index2,close_prices2,order,pred_index2)
+    plt.figure(figsize=[14,6])
+    plt.plot(index1,close_prices1,zorder=7)
+    plt.plot(index2,close_prices2,zorder=8)
+    plt.plot(pred_index1,mdl1,"--",linewidth=.75)
+    plt.plot(pred_index2,mdl2,"--",linewidth=.75)
+    plt.title(ticker1 + " and " + ticker2 + " Analysis")
+    plt.ylabel("share price")
+    plt.xlabel("previous " + time_period)
+    plt.legend([ticker1,ticker2,ticker1+ " " + str(order) + " order model",ticker1+ " " + str(order) + " order model"])
 
-# # Specify tickers and parameters to analyze
-ticker1 = "GPRO"
-ticker2 = "GPRO"
-time_period1 = "2y"
-time_period2 = "2y"
-future_days1 = "10"
-future_days2 = "10"
+def plot_all_mdls(ticker,time_period,future_days,max_order=3):
+    close_prices,index,pred_index = get_data(ticker,time_period,future_days)
+    plt.figure(figsize=[14,6])
+    plt.plot(index,close_prices)
+    legend_names = [ticker + " price"]
+    for i in range(1,max_order+1):
+        mdl = get_poly_linreg(index,close_prices,i,pred_index)
+        plt.plot(pred_index,mdl,"--",linewidth=.75)
+        legend_names = np.hstack((legend_names,"order "+str(i)))
+    exp_mdl = get_exp_linreg(index,close_prices,pred_index)
+    plt.plot(pred_index[1:len(pred_index)],exp_mdl,"--",linewidth=.75)
+    legend_names = np.hstack((legend_names,"exp"))
+    plt.legend(legend_names)
+    plt.title(ticker +" Regression Models up to order "+str(max_order)+ " and exponential")
+    plt.ylabel("share price")
+    plt.xlabel("previous " + time_period)
 
 # # Get the data for the tickers defined
 # print_current_price(ticker1)
 # print_current_price(ticker2)
 # print_mkt_cap(ticker1)
 # print_mkt_cap(ticker2)
-close_prices1,index1,pred_index1 = get_data(ticker1,time_period1,future_days1)
-close_prices2,index2,pred_index2 = get_data(ticker2,time_period2,future_days2)
 
-# # Make the models (simple linear regression, quadratic linear regression, exponential linear regression)
-lin_mdl1 = get_poly_linreg(index1,close_prices1,1,pred_index1)
-lin_mdl2 = get_poly_linreg(index2,close_prices2,1,pred_index2)
-quad_mdl1 = get_poly_linreg(index1,close_prices1,2,pred_index1)
-quad_mdl2 = get_poly_linreg(index2,close_prices2,2,pred_index2)
-cub_mdl1 = get_poly_linreg(index1,close_prices1,3,pred_index1)
-cub_mdl2 = get_poly_linreg(index2,close_prices2,3,pred_index2)
-exp_mdl1 = get_exp_linreg(index1,close_prices1,pred_index1)
-exp_mdl2 = get_exp_linreg(index2,close_prices2,pred_index2)
+# compare_two_plot("AAPL","MSFT","10y","100")
+# plt.show()
 
-# # # Make the plots to compare
-plt.figure(figsize=[14,6])
-plt.plot(index1,close_prices1,zorder=7)
-plt.plot(index2,close_prices2,zorder=8)
-plt.plot(pred_index1,lin_mdl1,"--",linewidth=.75)
-plt.plot(pred_index2,lin_mdl2,"--",linewidth=.75)
-plt.plot(pred_index1,quad_mdl1,"--",linewidth=.75)
-plt.plot(pred_index2,quad_mdl2,"--",linewidth=.75)
-plt.plot(pred_index1,cub_mdl1,"--",linewidth=.75)
-plt.plot(pred_index2,cub_mdl2,"--",linewidth=.75)
-plt.plot(pred_index1[1:len(pred_index1)],exp_mdl1,"--",linewidth=.75)
-plt.plot(pred_index2[1:len(pred_index2)],exp_mdl2,"--",linewidth=.75)
-plt.title(ticker1 + " and " + ticker2 + " Analysis")
-plt.ylabel("share price")
-plt.xlabel("previous " + time_period1 + "("+ticker1+")" + " or "+ time_period2+ "("+ticker2+")")
-plt.legend([ticker1,ticker2,ticker1+" linear model",ticker2+" linear model",ticker1+" quadratic model",ticker2+" quadratic model",ticker1+" cubic model",ticker2+" cubic model",ticker1+" exponential model",ticker2+" exponential model"])
-# plot_mult_polyfit(4)
+plot_all_mdls("AAPL","1mo","0",8)
 plt.show()
