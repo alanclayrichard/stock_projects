@@ -1,4 +1,3 @@
-from cmath import exp
 from matplotlib import pyplot as plt
 import yfinance as yf
 import numpy as np
@@ -29,7 +28,7 @@ def print_mkt_cap(ticker):
     ticker_marketCap = data.info['marketCap']
     print(ticker + ' Market Cap: $'+ str(ticker_marketCap) + " most recently")
 
-# Polynomial Regression
+# Polynomial Regression (any order polynomial up until overflow error ~90 order)
 def get_poly_linreg(X,Y,order,X_prediction):
     y = np.reshape(Y,[len(Y),1])
     x = np.reshape(X,[len(X),1])
@@ -61,6 +60,7 @@ def get_exp_linreg(X,Y,X_prediction):
     exp_mdl = np.exp(log_beta1*(X_prediction[1:len(X_prediction)]) + log_beta0)
     return exp_mdl
 
+# Compare Two Plots with Polynomial Regression
 def compare_two_plot(ticker1,ticker2,time_period,future_days,order=1):
     close_prices1,index1,pred_index1 = get_data(ticker1,time_period,future_days)
     close_prices2,index2,pred_index2 = get_data(ticker2,time_period,future_days)
@@ -76,6 +76,7 @@ def compare_two_plot(ticker1,ticker2,time_period,future_days,order=1):
     plt.xlabel("previous " + time_period)
     plt.legend([ticker1,ticker2,ticker1+ " " + str(order) + " order model",ticker1+ " " + str(order) + " order model"])
 
+# Plot all of the Linear Regression Models (including exponenital)
 def plot_all_mdls(ticker,time_period,future_days,max_order=3):
     close_prices,index,pred_index = get_data(ticker,time_period,future_days)
     plt.figure(figsize=[14,6])
@@ -93,14 +94,14 @@ def plot_all_mdls(ticker,time_period,future_days,max_order=3):
     plt.ylabel("share price")
     plt.xlabel("previous " + time_period)
 
-# # Get the data for the tickers defined
-# print_current_price(ticker1)
-# print_current_price(ticker2)
-# print_mkt_cap(ticker1)
-# print_mkt_cap(ticker2)
+# Get the data for the tickers defined
+print_current_price("AAPL")
+print_current_price("GOOG")
+# print_mkt_cap("AAPL")
+# print_mkt_cap("GOOG")
 
-# compare_two_plot("AAPL","MSFT","10y","100")
-# plt.show()
+compare_two_plot("AAPL","GOOG","10y","100",5)
+plt.show()
 
-plot_all_mdls("AAPL","1mo","0",8)
+plot_all_mdls("goog","10y","100",5)
 plt.show()
