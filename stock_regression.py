@@ -1,10 +1,19 @@
+from codecs import IncrementalDecoder
+from operator import index
 from matplotlib import pyplot as plt
 import yfinance as yf
 import numpy as np
+import pandas as pd
+import requests 
+import nasdaqdatalink
+from fredapi import Fred
+from datetime import date
 
+day = date.today()
+today = day.strftime("%Y-%m-%d")
 
 # Get Data for Tickers
-def get_data(ticker,time_period,days_future):
+def get_data(ticker,time_period,days_future='10'):
     data = yf.Ticker(ticker)
     time_data = data.history(period=time_period)
     # data will be closing prices for this model
@@ -76,7 +85,7 @@ def compare_two_plot(ticker1,ticker2,time_period,future_days,order=1):
     plt.xlabel("previous " + time_period)
     plt.legend([ticker1,ticker2,ticker1+ " " + str(order) + " order model",ticker1+ " " + str(order) + " order model"])
 
-# Plot all of the Linear Regression Models (including exponenital)
+# Plot all of the Linear Regression Models for Stock prices (including exponenital)
 def plot_all_mdls(ticker,time_period,future_days,max_order=3):
     close_prices,index,pred_index = get_data(ticker,time_period,future_days)
     plt.figure(figsize=[14,6])
@@ -94,14 +103,31 @@ def plot_all_mdls(ticker,time_period,future_days,max_order=3):
     plt.ylabel("share price")
     plt.xlabel("previous " + time_period)
 
+def get_DFF(start_date,end_date=today):
+    FRED_API_KEY = '8da06254f69eb0b6a6a0517042bb43f4'
+    fred = Fred(api_key=FRED_API_KEY)
+    data = fred.get_series('DFF',start_date+' 00:00:00',end_date+' 00:00:00').to_numpy()
+    index22 = np.linspace(0,len(data),len(data))
+    return data, index22
+
 # Get the data for the tickers defined
-print_current_price("AAPL")
-print_current_price("GOOG")
+# print_current_price("AAPL")
+# print_current_price("GOOG")
 # print_mkt_cap("AAPL")
 # print_mkt_cap("GOOG")
 
-compare_two_plot("AAPL","GOOG","10y","100",5)
-plt.show()
+# compare_two_plot("AAPL","GOOG","10y","100",5)
+# plt.show()
 
-plot_all_mdls("goog","10y","100",5)
+# plot_all_mdls("goog","10y","100",5)
+# plt.show()
+
+# Get Federal Funds Interest rate
+fed_funds_rate,index_ff = get_DFF('2001-02-15')
+
+# Regress interest rate onto its index
+mdl = get_poly_linreg(index_ff,fed_funds_rate,6,index_ff)
+
+plt.plot(index_ff,fed_funds_rate)
+plt.plot(index_ff,mdl)
 plt.show()
