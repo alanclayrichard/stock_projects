@@ -110,6 +110,13 @@ def get_DFF(start_date,end_date=today):
     index22 = np.linspace(0,len(data),len(data))
     return data, index22
 
+def get_bitcoin_price(start_date,end_date=today):
+    FRED_API_KEY = '8da06254f69eb0b6a6a0517042bb43f4'
+    fred = Fred(api_key=FRED_API_KEY)
+    data = fred.get_series('CBBTCUSD',start_date+' 00:00:00',end_date+' 00:00:00').to_numpy()
+    index = np.linspace(0,len(data),len(data))
+    return data, index
+
 # Get the data for the tickers defined
 # print_current_price("AAPL")
 # print_current_price("GOOG")
@@ -125,9 +132,12 @@ def get_DFF(start_date,end_date=today):
 # Get Federal Funds Interest rate
 fed_funds_rate,index_ff = get_DFF('2001-02-15')
 
-# Regress interest rate onto its index
+# # Regress interest rate onto its index
 mdl = get_poly_linreg(index_ff,fed_funds_rate,6,index_ff)
 
+BTC,BTC_index = get_bitcoin_price('2010-01-01')
+
+plt.plot(BTC_index,BTC)
 plt.plot(index_ff,fed_funds_rate)
 plt.plot(index_ff,mdl)
 plt.show()
