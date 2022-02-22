@@ -1,3 +1,4 @@
+from operator import index
 from pyexpat import model
 from matplotlib import pyplot as plt
 import yfinance as yf
@@ -12,6 +13,10 @@ today = day.strftime("%Y-%m-%d")
 class Analysis:
     # Polynomial Regression (any order polynomial up until overflow error ~90 order)
     def get_mult_linreg(X_train,Y_train,order,X_test):
+        Analysis.checknan(X_train)
+        Analysis.checknan(Y_train)
+        Analysis.checknan(X_test)
+
         y = np.reshape(Y_train,[len(Y_train),1])
         x = np.reshape(X_train,[len(X_train),1])
         if order == 1:
@@ -58,6 +63,29 @@ class Analysis:
             plt.title(str(model_type)+" Order Analysis")
             plt.legend(["training data","test data"])
             plt.show()
+    
+    # Check for NaN data
+    def checknan(array):
+        k = len(np.shape(array))
+        if k == 1:
+            r = np.shape(array)[0]
+            nan_bool = np.isnan(array)
+            flag = False
+            for i in range(0,r):
+                if nan_bool[i]:
+                    flag = True
+                    print("error: NaN detected at ["+str(i)+"]")
+        elif k == 2:
+            r = np.shape(array)[0]
+            c = np.shape(array)[1]
+            nan_bool = np.isnan(array)
+            flag = False
+            for i in range(0,r):
+                for j in range(0,c):
+                    if nan_bool[i,j]:
+                        flag = True
+                        print("error: NaN detected at [" + str(i) + "," +str(j)+"]")
+
 
 class Stock:
     # Get Data for Tickers
@@ -135,8 +163,8 @@ class Crypto:
     def get_bitcoin_price(start_date,end_date=today):
         FRED_API_KEY = '8da06254f69eb0b6a6a0517042bb43f4'
         fred = Fred(api_key=FRED_API_KEY)
-        data = fred.get_series('CBBTCUSD',start_date+' 00:00:00',end_date+' 00:00:00').to_numpy()
-        index = np.linspace(0,len(data),len(data))
+        data = np.array(fred.get_series('CBBTCUSD',start_date+' 00:00:00',end_date+' 00:00:00'))
+        index = np.array(np.linspace(0,len(data),len(data)))
         return data, index
 
 class Govt:
@@ -151,7 +179,8 @@ class Govt:
 # Perform the analysis:
 # Stock.show_stockreg("AAPL","10y","10",9)
 
-Stock.plot_all_mdls("SPY","10y","100",9)
+# Stock.plot_all_mdls("SPY","10y","100",9)
 
-Bit_price = Crypto.get_bitcoin_price("2021-02-21")
-print(Bit_price)
+Bit_price, index = np.array(Crypto.get_bitcoin_price("2021-02-21"))
+mdl = Analysis.get_mult_linreg(index,Bit_price,3,index)
+Analysis.plot_regmdl(index,Bit_price,index,mdl,3)
