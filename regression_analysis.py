@@ -1,8 +1,7 @@
-from operator import index
-from pyexpat import model
 from matplotlib import pyplot as plt
-import yfinance as yf
 import numpy as np
+import numpy.typing as npt
+import yfinance as yf
 from fredapi import Fred
 from datetime import date
 
@@ -12,7 +11,7 @@ today = day.strftime("%Y-%m-%d")
 
 class Analysis:
     # Polynomial Regression (any order polynomial up until overflow error ~90 order)
-    def get_mult_linreg(X_train,Y_train,order,X_test):
+    def get_mult_linreg(X_train: npt.NDArray, Y_train: npt.NDArray, order: int, X_test: npt.NDArray) -> npt.NDArray:
         Analysis.checknan(X_train)
         Analysis.checknan(Y_train)
         Analysis.checknan(X_test)
@@ -37,7 +36,7 @@ class Analysis:
         return mult_linreg_mdl
 
     # Exponential Regression
-    def get_exp_linreg(X_train,Y_train,X_test):
+    def get_exp_linreg(X_train: npt.NDArray, Y_train: npt.NDArray, X_test: npt.NDArray) -> npt.NDArray:
         log_prices = np.log(Y_train[1:len(Y_train)])
         log_index = X_train[1:len(X_train)]
         x_loghat = np.average(log_index)
@@ -48,7 +47,7 @@ class Analysis:
         return exp_mdl
     
     # Plot general regression model
-    def plot_regmdl(x_train,y_train,x_test,y_test,model_type):
+    def plot_regmdl(x_train: npt.NDArray, y_train: npt.NDArray, x_test: npt.NDArray, y_test: npt.NDArray, model_type: int) -> None:
         if model_type == "exp":
             plt.figure(figsize=[14,6])
             plt.plot(x_train[1:len(x_train)],y_train[1:len(x_train)])
@@ -63,34 +62,41 @@ class Analysis:
             plt.title(str(model_type)+" Order Analysis")
             plt.legend(["training data","test data"])
             plt.show()
+
+    def rmvnan(array: npt.NDArray) -> npt.NDArray:
+        array = array[~np.isnan(array)]
+        return array
     
     # Check for NaN data
-    def checknan(array):
+    def checknan(array: npt.NDArray,name: str = "your stinky data") -> bool:
         k = len(np.shape(array))
+        flag = False
         if k == 1:
             r = np.shape(array)[0]
             nan_bool = np.isnan(array)
-            flag = False
             for i in range(0,r):
                 if nan_bool[i]:
                     flag = True
-                    print("error: NaN detected at ["+str(i)+"]")
+                    print("warning: NaN detected at ["+str(i)+"] in " + name)
         elif k == 2:
             r = np.shape(array)[0]
             c = np.shape(array)[1]
             nan_bool = np.isnan(array)
-            flag = False
             for i in range(0,r):
                 for j in range(0,c):
                     if nan_bool[i,j]:
                         flag = True
-                        print("error: NaN detected at [" + str(i) + "," +str(j)+"]")
+                        print("warning: NaN detected at [" + str(i) + "," +str(j)+"] in " + name)
+        return flag
 
 
 class Stock:
     # Get Data for Tickers
-    def get_data(ticker,time_period,days_future='10'):
+    def get_data(ticker: str, time_period: str, days_future: str ='10') -> npt.NDArray:
         data = yf.Ticker(ticker)
+        if Analysis.checknan(data) == True:
+            data = Analysis.rmvnan(data)
+            print("removed nan")
         time_data = data.history(period=time_period)
         # data will be closing prices for this model
         close_prices = time_data.iloc[:,3].to_numpy()
@@ -100,7 +106,7 @@ class Stock:
         return close_prices,index,pred_index
 
     # Get Current Prices
-    def print_current_price(ticker):
+    def print_current_price(ticker: str) -> str:
         data = yf.Ticker(ticker)
         time_data = data.history(period="10d")
         close_prices = time_data.iloc[:,3].to_numpy()
@@ -108,13 +114,13 @@ class Stock:
         print(tick_text)
 
     # Market Cap
-    def print_mkt_cap(ticker):
+    def print_mkt_cap(ticker: str) -> str:
         data = yf.Ticker(ticker)
         ticker_marketCap = data.info['marketCap']
         print(ticker + ' Market Cap: $'+ str(ticker_marketCap) + " most recently")
 
     # Perform and show regression for given ticker, time, etc
-    def show_stockreg(ticker,time_period,future_days,model_type):
+    def show_stockreg(ticker: str, time_period: str, future_days: str, model_type: str) -> None:
         data,x_train,x_test = Stock.get_data(ticker,time_period,future_days)
         if model_type == "exp":
             mdl = Analysis.get_exp_linreg(x_train,data,x_test)
@@ -124,7 +130,7 @@ class Stock:
             Analysis.plot_regmdl(x_train,data,x_test,mdl,model_type)
 
     # Compare Two Plots with Polynomial Regression
-    def compare_two_plot(ticker1,ticker2,time_period,future_days,order=1):
+    def compare_two_plot(ticker1: str, ticker2: str, time_period: str, future_days: str, order: int = 1) -> None:
         close_prices1,index1,pred_index1 = Stock.get_data(ticker1,time_period,future_days)
         close_prices2,index2,pred_index2 = Stock.get_data(ticker2,time_period,future_days)
         mdl1 = Analysis.get_mult_linreg(index1,close_prices1,order,pred_index1)
@@ -140,7 +146,7 @@ class Stock:
         plt.legend([ticker1,ticker2,ticker1+ " " + str(order) + " order model",ticker1+ " " + str(order) + " order model"])
 
     # Plot all of the Linear Regression Models for Stock prices (including exponenital)
-    def plot_all_mdls(ticker,time_period,future_days,max_order=3):
+    def plot_all_mdls(ticker: str, time_period: str, future_days: str, max_order: int = 3) -> None:
         close_prices,index,pred_index = Stock.get_data(ticker,time_period,future_days)
         plt.figure(figsize=[14,6])
         plt.plot(index,close_prices)
@@ -160,27 +166,43 @@ class Stock:
 
 class Crypto:
     # Get historical Bitcoin prices
-    def get_bitcoin_price(start_date,end_date=today):
+    def get_bitcoin_price(start_date: str,end_date: str = today) -> npt.NDArray:
         FRED_API_KEY = '8da06254f69eb0b6a6a0517042bb43f4'
         fred = Fred(api_key=FRED_API_KEY)
         data = np.array(fred.get_series('CBBTCUSD',start_date+' 00:00:00',end_date+' 00:00:00'))
+        if Analysis.checknan(data,"BTC") == True:
+            data = Analysis.rmvnan(data)
+            print("removed nan")
         index = np.array(np.linspace(0,len(data),len(data)))
         return data, index
 
 class Govt:
     # Get federal funds interest rate from FRED data
-    def get_DFF(start_date,end_date=today):
+    def get_DFF(start_date: str,end_date: str = today) -> npt.NDArray:
         FRED_API_KEY = '8da06254f69eb0b6a6a0517042bb43f4'
         fred = Fred(api_key=FRED_API_KEY)
         data = fred.get_series('DFF',start_date+' 00:00:00',end_date+' 00:00:00').to_numpy()
+        if Analysis.checknan(data,"DFF") == True:
+            data = Analysis.rmvnan(data)
+            print("removed nan")
         index22 = np.linspace(0,len(data),len(data))
         return data, index22
 
 # Perform the analysis:
-# Stock.show_stockreg("AAPL","10y","10",9)
+# Stock.show_stockreg("SPY","10y","10","exp")
 
 # Stock.plot_all_mdls("SPY","10y","100",9)
 
-Bit_price, index = np.array(Crypto.get_bitcoin_price("2021-02-21"))
-mdl = Analysis.get_mult_linreg(index,Bit_price,3,index)
-Analysis.plot_regmdl(index,Bit_price,index,mdl,3)
+order = 4
+btc_price, btc_index = Crypto.get_bitcoin_price("2011-02-21")
+btc_mdl = Analysis.get_mult_linreg(btc_index,btc_price,order,btc_index)
+spy_price, spy_index, trash = Stock.get_data("SPY","10y","0")
+spy_mdl = Analysis.get_mult_linreg(spy_index,spy_price,order,spy_index)
+
+datasize = len(spy_index)
+
+# Analysis.plot_regmdl(spy_index,spy_price,spy_index,spy_mdl,order)
+# Analysis.plot_regmdl(btc_index,btc_price,btc_index,btc_mdl,order)
+
+plt.scatter(spy_price[-datasize:],btc_price[-datasize:],c=spy_index, cmap='winter',s=6)
+plt.show()
