@@ -1,3 +1,4 @@
+from re import X
 from matplotlib import pyplot as plt
 import numpy as np
 import numpy.typing as npt
@@ -11,40 +12,67 @@ today = day.strftime("%Y-%m-%d")
 
 class Analysis:
     # Polynomial Regression (any order polynomial up until overflow error ~90 order)
-    def get_mult_linreg(X_train: npt.NDArray, Y_train: npt.NDArray, order: int, X_test: npt.NDArray) -> npt.NDArray:
-        Analysis.checknan(X_train)
-        Analysis.checknan(Y_train)
-        Analysis.checknan(X_test)
-
-        y = np.reshape(Y_train,[len(Y_train),1])
-        x = np.reshape(X_train,[len(X_train),1])
+    def get_mult_linreg(x_train: npt.NDArray, y_train: npt.NDArray, order: int, x_test: npt.NDArray = False) -> npt.NDArray:
+        if isinstance(x_test,bool) == True:
+            x_test = x_train
+        Analysis.checknan(x_train)
+        Analysis.checknan(x_train)
+        Analysis.checknan(x_test)
+        y = np.reshape(y_train,[len(y_train),1])
+        x = np.reshape(x_train,[len(x_train),1])
         if order == 1:
-            x_ones = np.ones([len(X_train),1])
+            x_ones = np.ones([len(x_train),1])
             x = np.hstack((x_ones,x))
         else: 
-            x_ones = np.ones([len(X_train),1])
+            x_ones = np.ones([len(x_train),1])
             for i in range(1,order+1):
                 x_ones = np.hstack((x_ones,x**i))
             x = x_ones
         Betas = np.dot(np.linalg.inv(np.dot(x.transpose(1,0),x)),np.dot(x.transpose(1,0),y))
         if order == 1:
-            mult_linreg_mdl = Betas[0] + Betas[1]*X_test
+            mult_linreg_mdl = Betas[0] + Betas[1]*x_test
         else:
             mult_linreg_mdl = Betas[0]
             for j in range(1,order+1):
-                mult_linreg_mdl = mult_linreg_mdl + Betas[j]*(X_test**j)
+                mult_linreg_mdl = mult_linreg_mdl + Betas[j]*(x_test**j)
         return mult_linreg_mdl
 
     # Exponential Regression
-    def get_exp_linreg(X_train: npt.NDArray, Y_train: npt.NDArray, X_test: npt.NDArray) -> npt.NDArray:
-        log_prices = np.log(Y_train[1:len(Y_train)])
-        log_index = X_train[1:len(X_train)]
+    def get_exp_linreg(x_train: npt.NDArray, y_train: npt.NDArray, x_test: npt.NDArray) -> npt.NDArray:
+        log_prices = np.log(y_train[1:len(y_train)])
+        log_index = x_train[1:len(x_train)]
         x_loghat = np.average(log_index)
         y_loghat = np.average(log_prices)
         log_beta1 = np.sum((log_prices-y_loghat)*(log_index-x_loghat))/np.sum((log_index-x_loghat)**2)
         log_beta0 = y_loghat - log_beta1*x_loghat
-        exp_mdl = np.exp(log_beta1*(X_test[1:len(X_test)]) + log_beta0)
+        exp_mdl = np.exp(log_beta1*(x_test[1:len(x_test)]) + log_beta0)
         return exp_mdl
+    
+    # Get r^2 value for a set of data points x and y 
+    def get_r2(x_train: npt.NDArray, y_train: npt.NDArray) -> float:
+        yhat = np.mean(y_train)
+        ybar = Analysis.get_mult_linreg(x_train,y_train,1)
+        rss = np.sum((y_train-ybar)**2)
+        tss = np.sum((y_train-yhat)**2)
+        r_sq = 1 - rss/tss
+        return r_sq
+
+    # Display Correlation on a plot (R^2 value displayed)
+    def show_correlaition(x_train: npt.NDArray, y_train: npt.NDArray) -> None:
+        r2 = Analysis.get_r2(x_train,y_train)
+        xmax = np.max(np.abs(x_train))
+        ymax = np.max(np.abs(y_train))
+        if xmax>ymax:
+            max = xmax
+        else:
+            max = ymax
+        plt.scatter(x_train,y_train,c='red',s=4)
+        plt.xlabel(str())
+        plt.ylabel(str())
+        x = np.linspace(-max,max,1000)
+        plt.plot(x,x,"--",linewidth=.75)
+        plt.annotate("R^2 = "+str(round(r2,3)),xy=(0,0),xytext=(-max,max))
+        plt.show()
     
     # Plot general regression model
     def plot_regmdl(x_train: npt.NDArray, y_train: npt.NDArray, x_test: npt.NDArray, y_test: npt.NDArray, model_type: int) -> None:
@@ -63,6 +91,7 @@ class Analysis:
             plt.legend(["training data","test data"])
             plt.show()
 
+    # Remove NaN values 
     def rmvnan(array: npt.NDArray) -> npt.NDArray:
         array = array[~np.isnan(array)]
         return array
@@ -89,7 +118,6 @@ class Analysis:
                         print("warning: NaN detected at [" + str(i) + "," +str(j)+"] in " + name)
         return flag
 
-
 class Stock:
     # Get Data for Tickers
     def get_data(ticker: str, time_period: str, days_future: str ='10') -> npt.NDArray:
@@ -112,6 +140,13 @@ class Stock:
         close_prices = time_data.iloc[:,3].to_numpy()
         tick_text = ticker + " is at $" + str(close_prices[-1]) + " per share most recently"
         print(tick_text)
+
+    # Get daily percent change
+    def get_pct(ticker: str, time_period: str) -> npt.NDArray:
+        close_price= Stock.get_data(ticker,time_period,'0')[0]
+        day_change  = np.diff(close_price)
+        pct_change = 100*(day_change/close_price[:-1])
+        return pct_change
 
     # Market Cap
     def print_mkt_cap(ticker: str) -> str:
@@ -189,20 +224,7 @@ class Govt:
         return data, index22
 
 # Perform the analysis:
-# Stock.show_stockreg("SPY","10y","10","exp")
+stock1_pct_change = Stock.get_pct("ICLN","10y")
+stock2_pct_change = Stock.get_pct("SPY","10y")
 
-# Stock.plot_all_mdls("SPY","10y","100",9)
-
-order = 4
-btc_price, btc_index = Crypto.get_bitcoin_price("2011-02-21")
-btc_mdl = Analysis.get_mult_linreg(btc_index,btc_price,order,btc_index)
-spy_price, spy_index, trash = Stock.get_data("SPY","10y","0")
-spy_mdl = Analysis.get_mult_linreg(spy_index,spy_price,order,spy_index)
-
-datasize = len(spy_index)
-
-# Analysis.plot_regmdl(spy_index,spy_price,spy_index,spy_mdl,order)
-# Analysis.plot_regmdl(btc_index,btc_price,btc_index,btc_mdl,order)
-
-plt.scatter(spy_price[-datasize:],btc_price[-datasize:],c=spy_index, cmap='winter',s=6)
-plt.show()
+Analysis.show_correlaition(stock1_pct_change,stock2_pct_change)
