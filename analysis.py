@@ -1,4 +1,3 @@
-from re import X
 from matplotlib import pyplot as plt
 import numpy as np
 import numpy.typing as npt
@@ -224,7 +223,12 @@ class Govt:
         return data, index22
 
 # Perform the analysis:
-stock1_pct_change = Stock.get_pct("ICLN","10y")
-stock2_pct_change = Stock.get_pct("SPY","10y")
+# stock1_pct_change = Stock.get_pct("BRK-A","10y")
+# stock2_pct_change = Stock.get_pct("SBUX","10y")
 
-Analysis.show_correlaition(stock1_pct_change,stock2_pct_change)
+# Analysis.show_correlaition(stock1_pct_change,stock2_pct_change)
+# dff,time = Govt.get_DFF("01-01-2010")
+# plt.plot(time,dff)
+# plt.show()
+
+# Stock.plot_all_mdls("GPRO","2mo","5",4)
